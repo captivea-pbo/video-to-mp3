@@ -1,10 +1,13 @@
-name: Build
+name: Build & Release
 
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -31,7 +34,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
           cache: npm
 
       - name: Install dependencies
@@ -40,9 +43,8 @@ jobs:
       - name: Build
         run: npm run ${{ matrix.script }}
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: Video-to-MP3-${{ matrix.name }}
-          path: ${{ matrix.artifact }}
-          retention-days: 30
+          files: ${{ matrix.artifact }}
