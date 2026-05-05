@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"electron .\"",
     "build": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder --win",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:linux": "vite build && electron-builder --linux",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -14,6 +17,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.0.1",
+    "cross-env": "^10.1.0",
     "electron": "^41.5.0",
     "electron-builder": "^26.8.1",
     "react": "^18.3.1",
@@ -29,8 +33,14 @@
       "electron/**/*",
       "node_modules/ffmpeg-static/**/*"
     ],
-    "mac": { "target": "dmg" },
-    "win": { "target": "nsis" },
-    "linux": { "target": "AppImage" }
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }
