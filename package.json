@@ -33,6 +33,9 @@
       "electron/**/*",
       "node_modules/ffmpeg-static/**/*"
     ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**/*"
+    ],
     "mac": {
       "target": "dmg"
     },

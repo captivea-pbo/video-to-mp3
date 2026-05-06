@@ -6,7 +6,12 @@ const fs = require('fs')
 // Get ffmpeg binary path (works both in dev and packaged)
 function getFfmpegPath() {
   try {
-    return require('ffmpeg-static')
+    const ffmpegPath = require('ffmpeg-static')
+    // Binaries can't be executed from inside an .asar archive — redirect to the unpacked copy
+    if (app.isPackaged) {
+      return ffmpegPath.replace('app.asar', 'app.asar.unpacked')
+    }
+    return ffmpegPath
   } catch {
     return 'ffmpeg'
   }
