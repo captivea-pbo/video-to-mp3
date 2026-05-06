@@ -75,6 +75,17 @@ ipcMain.handle('dialog:saveFile', async (_, defaultName) => {
   return canceled ? null : filePath
 })
 
+// ─── IPC: Cancel ongoing conversion ─────────────────────────────────────────
+let currentFfmpeg = null
+let cancelRequested = false
+
+ipcMain.handle('ffmpeg:cancel', () => {
+  if (currentFfmpeg) {
+    cancelRequested = true
+    currentFfmpeg.kill()
+  }
+})
+
 // ─── IPC: Convert video to MP3 ───────────────────────────────────────────────
 ipcMain.handle('ffmpeg:convert', async (event, { inputPath, outputPath, options }) => {
   const ffmpegPath = getFfmpegPath()
@@ -86,6 +97,8 @@ ipcMain.handle('ffmpeg:convert', async (event, { inputPath, outputPath, options 
     startTime = null,
     endTime = null,
   } = options || {}
+
+  cancelRequested = false
 
   return new Promise((resolve, reject) => {
     // First pass: get duration for progress
@@ -117,6 +130,7 @@ ipcMain.handle('ffmpeg:convert', async (event, { inputPath, outputPath, options 
       )
 
       const ffmpeg = spawn(ffmpegPath, args)
+      currentFfmpeg = ffmpeg
       let lastProgress = 0
 
       ffmpeg.stderr.on('data', (data) => {
@@ -137,9 +151,12 @@ ipcMain.handle('ffmpeg:convert', async (event, { inputPath, outputPath, options 
       })
 
       ffmpeg.on('close', (code) => {
-        if (code === 0) {
+        currentFfmpeg = null
+        if (cancelRequested) {
+          cancelRequested = false
+          resolve({ cancelled: true })
+        } else if (code === 0) {
           event.sender.send('ffmpeg:progress', 100)
-          // Get output file size
           try {
             const stats = fs.statSync(outputPath)
             resolve({ success: true, size: stats.size })

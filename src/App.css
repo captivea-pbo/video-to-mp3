@@ -363,3 +363,37 @@
   border-color: var(--text);
   color: var(--text);
 }
+
+.btn-cancel {
+  background: none;
+  border: 1px solid rgba(255, 77, 77, 0.4);
+  color: var(--danger);
+}
+
+.btn-cancel:hover {
+  border-color: var(--danger);
+  background: rgba(255, 77, 77, 0.07);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #0a0a0a;
+}
+
+.btn-danger:hover {
+  background: #ff6b6b;
+  box-shadow: 0 0 16px rgba(255, 77, 77, 0.3);
+}
+
+.cancel-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cancel-confirm-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-right: 4px;
+}

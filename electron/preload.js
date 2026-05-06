@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Conversion
   convert: (params) => ipcRenderer.invoke('ffmpeg:convert', params),
+  cancel: () => ipcRenderer.invoke('ffmpeg:cancel'),
 
   // Progress listener
   onProgress: (callback) => {

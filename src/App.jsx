@@ -16,6 +16,7 @@ export default function App() {
   const [result, setResult]         = useState(null)
   const [errorMsg, setErrorMsg]     = useState('')
   const [dragging, setDragging]     = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
 
   const [bitrate, setBitrate]       = useState('192k')
   const [sampleRate, setSampleRate] = useState('44100')
@@ -81,14 +82,23 @@ export default function App() {
         outputPath: out,
         options: { bitrate, sampleRate, channels, startTime: startTime || null, endTime: endTime || null },
       })
-      setResult(res)
-      setStatus('done')
+      if (res.cancelled) {
+        setStatus('idle')
+      } else {
+        setResult(res)
+        setStatus('done')
+      }
     } catch (err) {
       setErrorMsg(err.message || 'Erreur inconnue')
       setStatus('error')
     } finally {
       if (cleanupRef.current) cleanupRef.current()
+      setConfirmCancel(false)
     }
+  }
+
+  const handleCancelConfirm = () => {
+    window.electronAPI.cancel()
   }
 
   const handleReset = () => {
@@ -98,6 +108,7 @@ export default function App() {
     setProgress(0)
     setResult(null)
     setErrorMsg('')
+    setConfirmCancel(false)
   }
 
   return (
@@ -105,8 +116,7 @@ export default function App() {
       <header className="app-header">
         <div className="logo">
           <span className="logo-icon">◈</span>
-          <span className="logo-text">VIDEO<em>to</em>MP3</span>
-          <span>by Paul Bonnet</span>
+          <span className="logo-text">VIDEO<em>to</em>MP3 <em>by Paul Bonnet</em></span>
         </div>
         <button
           className={`btn-advanced ${advanced ? 'active' : ''}`}
@@ -156,13 +166,25 @@ export default function App() {
           <button className="btn btn-reset" onClick={handleReset}>
             Nouvelle conversion
           </button>
+        ) : isConverting ? (
+          confirmCancel ? (
+            <div className="cancel-confirm">
+              <span className="cancel-confirm-label">Annuler la conversion ?</span>
+              <button className="btn btn-danger" onClick={handleCancelConfirm}>Oui, annuler</button>
+              <button className="btn btn-reset" onClick={() => setConfirmCancel(false)}>Continuer</button>
+            </div>
+          ) : (
+            <button className="btn btn-cancel" onClick={() => setConfirmCancel(true)}>
+              Annuler
+            </button>
+          )
         ) : (
           <button
             className="btn btn-convert"
             onClick={handleConvert}
-            disabled={!inputFile || isConverting}
+            disabled={!inputFile}
           >
-            {isConverting ? 'Conversion…' : 'Convertir en MP3'}
+            Convertir en MP3
           </button>
         )}
       </footer>
