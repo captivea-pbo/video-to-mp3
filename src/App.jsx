@@ -1,42 +1,31 @@
 import { useState, useRef, useCallback } from 'react'
 import './App.css'
-
-const BITRATES = ['64k', '96k', '128k', '192k', '256k', '320k']
-const SAMPLE_RATES = ['22050', '44100', '48000']
-const CHANNELS = [{ value: '1', label: 'Mono' }, { value: '2', label: 'Stéréo' }]
-
-function formatBytes(bytes) {
-  if (!bytes) return ''
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`
-  return `${(bytes / (1024 * 1024)).toFixed(2)} Mo`
-}
-
-function basename(filePath) {
-  return filePath ? filePath.replace(/\\/g, '/').split('/').pop() : ''
-}
-
-function stripExt(filename) {
-  return filename.replace(/\.[^/.]+$/, '')
-}
+import { basename, stripExt } from './utils'
+import DropZone from './components/DropZone'
+import AdvancedPanel from './components/AdvancedPanel'
+import OutputRow from './components/OutputRow'
+import ProgressBar from './components/ProgressBar'
+import ResultBanner from './components/ResultBanner'
 
 export default function App() {
-  const [inputFile, setInputFile]     = useState(null)
-  const [outputFile, setOutputFile]   = useState(null)
-  const [advanced, setAdvanced]       = useState(false)
-  const [status, setStatus]           = useState('idle') // idle | converting | done | error
-  const [progress, setProgress]       = useState(0)
-  const [result, setResult]           = useState(null)
-  const [errorMsg, setErrorMsg]       = useState('')
-  const [dragging, setDragging]       = useState(false)
+  const [inputFile, setInputFile]   = useState(null)
+  const [outputFile, setOutputFile] = useState(null)
+  const [advanced, setAdvanced]     = useState(false)
+  const [status, setStatus]         = useState('idle') // idle | converting | done | error
+  const [progress, setProgress]     = useState(0)
+  const [result, setResult]         = useState(null)
+  const [errorMsg, setErrorMsg]     = useState('')
+  const [dragging, setDragging]     = useState(false)
 
-  // Advanced options
-  const [bitrate, setBitrate]         = useState('192k')
-  const [sampleRate, setSampleRate]   = useState('44100')
-  const [channels, setChannels]       = useState('2')
-  const [startTime, setStartTime]     = useState('')
-  const [endTime, setEndTime]         = useState('')
+  const [bitrate, setBitrate]       = useState('192k')
+  const [sampleRate, setSampleRate] = useState('44100')
+  const [channels, setChannels]     = useState('2')
+  const [startTime, setStartTime]   = useState('')
+  const [endTime, setEndTime]       = useState('')
 
   const cleanupRef = useRef(null)
+
+  const isConverting = status === 'converting'
 
   const handlePickFile = async () => {
     const path = await window.electronAPI.openFile()
@@ -83,7 +72,6 @@ export default function App() {
     setResult(null)
     setErrorMsg('')
 
-    // Subscribe to progress
     const unsubscribe = window.electronAPI.onProgress((p) => setProgress(p))
     cleanupRef.current = unsubscribe
 
@@ -91,13 +79,7 @@ export default function App() {
       const res = await window.electronAPI.convert({
         inputPath: inputFile,
         outputPath: out,
-        options: {
-          bitrate,
-          sampleRate,
-          channels,
-          startTime: startTime || null,
-          endTime: endTime || null,
-        },
+        options: { bitrate, sampleRate, channels, startTime: startTime || null, endTime: endTime || null },
       })
       setResult(res)
       setStatus('done')
@@ -118,15 +100,13 @@ export default function App() {
     setErrorMsg('')
   }
 
-  const isConverting = status === 'converting'
-
   return (
     <div className="app">
-      {/* Header */}
       <header className="app-header">
         <div className="logo">
           <span className="logo-icon">◈</span>
           <span className="logo-text">VIDEO<em>to</em>MP3</span>
+          <span>by Paul Bonnet</span>
         </div>
         <button
           className={`btn-advanced ${advanced ? 'active' : ''}`}
@@ -138,138 +118,39 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {/* Drop zone */}
-        <div
-          className={`drop-zone ${dragging ? 'dragging' : ''} ${inputFile ? 'has-file' : ''} ${isConverting ? 'locked' : ''}`}
-          onClick={!isConverting ? handlePickFile : undefined}
+        <DropZone
+          inputFile={inputFile}
+          isConverting={isConverting}
+          dragging={dragging}
+          onPickFile={handlePickFile}
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
-        >
-          {inputFile ? (
-            <>
-              <span className="drop-icon">▶</span>
-              <span className="drop-filename">{basename(inputFile)}</span>
-              <span className="drop-hint">Cliquer pour changer</span>
-            </>
-          ) : (
-            <>
-              <span className="drop-icon">⊕</span>
-              <span className="drop-label">Déposer une vidéo ici</span>
-              <span className="drop-hint">ou cliquer pour parcourir · MP4, MKV, AVI, MOV…</span>
-            </>
-          )}
-        </div>
+        />
 
-        {/* Advanced options panel */}
-        <div className={`advanced-panel ${advanced ? 'open' : ''}`}>
-          <div className="advanced-grid">
-            <div className="field">
-              <label>Bitrate</label>
-              <div className="chip-group">
-                {BITRATES.map(b => (
-                  <button
-                    key={b}
-                    className={`chip ${bitrate === b ? 'active' : ''}`}
-                    onClick={() => setBitrate(b)}
-                    disabled={isConverting}
-                  >{b}</button>
-                ))}
-              </div>
-            </div>
+        <AdvancedPanel
+          open={advanced}
+          isConverting={isConverting}
+          bitrate={bitrate} setBitrate={setBitrate}
+          sampleRate={sampleRate} setSampleRate={setSampleRate}
+          channels={channels} setChannels={setChannels}
+          startTime={startTime} setStartTime={setStartTime}
+          endTime={endTime} setEndTime={setEndTime}
+        />
 
-            <div className="field">
-              <label>Fréquence</label>
-              <div className="chip-group">
-                {SAMPLE_RATES.map(r => (
-                  <button
-                    key={r}
-                    className={`chip ${sampleRate === r ? 'active' : ''}`}
-                    onClick={() => setSampleRate(r)}
-                    disabled={isConverting}
-                  >{parseInt(r / 1000)}kHz</button>
-                ))}
-              </div>
-            </div>
-
-            <div className="field">
-              <label>Canaux</label>
-              <div className="chip-group">
-                {CHANNELS.map(c => (
-                  <button
-                    key={c.value}
-                    className={`chip ${channels === c.value ? 'active' : ''}`}
-                    onClick={() => setChannels(c.value)}
-                    disabled={isConverting}
-                  >{c.label}</button>
-                ))}
-              </div>
-            </div>
-
-            <div className="field field-time">
-              <label>Découpe (optionnel)</label>
-              <div className="time-inputs">
-                <input
-                  type="text"
-                  placeholder="Début  00:00:00"
-                  value={startTime}
-                  onChange={e => setStartTime(e.target.value)}
-                  disabled={isConverting}
-                />
-                <span className="time-sep">→</span>
-                <input
-                  type="text"
-                  placeholder="Fin  00:00:00"
-                  value={endTime}
-                  onChange={e => setEndTime(e.target.value)}
-                  disabled={isConverting}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Output path */}
         {inputFile && (
-          <div className="output-row">
-            <span className="output-label">Destination</span>
-            <button
-              className="btn-output"
-              onClick={handlePickOutput}
-              disabled={isConverting}
-            >
-              {outputFile ? basename(outputFile) : 'Choisir…'}
-            </button>
-          </div>
+          <OutputRow
+            outputFile={outputFile}
+            isConverting={isConverting}
+            onPickOutput={handlePickOutput}
+          />
         )}
 
-        {/* Progress bar */}
-        {isConverting && (
-          <div className="progress-wrap">
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${progress}%` }} />
-            </div>
-            <span className="progress-label">{progress}%</span>
-          </div>
-        )}
+        {isConverting && <ProgressBar progress={progress} />}
 
-        {/* Result */}
-        {status === 'done' && (
-          <div className="result success">
-            <span className="result-icon">✓</span>
-            <span>Conversion terminée{result?.size ? ` · ${formatBytes(result.size)}` : ''}</span>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="result error">
-            <span className="result-icon">✕</span>
-            <span>{errorMsg}</span>
-          </div>
-        )}
+        <ResultBanner status={status} result={result} errorMsg={errorMsg} />
       </main>
 
-      {/* Footer actions */}
       <footer className="app-footer">
         {status === 'done' || status === 'error' ? (
           <button className="btn btn-reset" onClick={handleReset}>
